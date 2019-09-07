@@ -1,0 +1,31 @@
+{
+  "name": "image-uploader-api",
+  "version": "1.0.0",
+  "description": "API to upload images to MongoDB using Multer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sidsbrmnn/image-uploader-api.git"
+  },
+  "author": "Siddharth Subramanian",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sidsbrmnn/image-uploader-api/issues"
+  },
+  "homepage": "https://github.com/sidsbrmnn/image-uploader-api#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^8.1.0",
+    "express": "^4.17.1",
+    "gridfs-stream": "^1.1.1",
+    "mongoose": "^5.6.13",
+    "multer": "^1.4.2",
+    "multer-gridfs-storage": "^3.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.3.0"
+  }
+}
