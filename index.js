@@ -1,11 +1,9 @@
 require('dotenv').config();
 const cors = require('cors');
-const crypto = require('crypto');
 const express = require('express');
-const Grid = require('gridfs-stream');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const GridFsStorage = require('multer-gridfs-storage');
+const { Readable } = require('stream');
 
 const app = express();
 
@@ -15,52 +13,75 @@ app.use(cors());
 const MONGODB_URI =
   process.env.MONGODB_URI || 'mongodb://localhost/image-uploader-test';
 
-const conn = mongoose.createConnection(MONGODB_URI);
-mongoose.connect(MONGODB_URI, { useNewUrlParser: true });
+let db;
+mongoose
+  .connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(res => {
+    db = res.connection.db;
+    console.log('Connected to MongoDB');
+  });
 
-let gfs;
-conn.on('open', () => {
-  gfs = Grid(conn.db, mongoose.mongo);
-  gfs.collection('uploads');
-  console.log('Connected to MongoDB');
+app.get('/:id', (req, res) => {
+  let id;
+  try {
+    id = new mongoose.mongo.ObjectID(req.params.id);
+  } catch (ex) {
+    res.status(404).send('Not found');
+  }
+  res.set('content-type', 'audio/mp3');
+  res.set('accept-ranges', 'bytes');
+
+  const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'tracks' });
+  const downloadStream = bucket.openDownloadStream(id);
+
+  downloadStream.on('data', chunk => {
+    res.write(chunk);
+  });
+
+  downloadStream.on('error', () => {
+    res.sendStatus(404);
+  });
+
+  downloadStream.on('end', () => {
+    res.end();
+  });
 });
 
-const storage = new GridFsStorage({
-  url: MONGODB_URI,
-  file: (req, file) =>
-    new Promise((resolve, reject) => {
-      crypto.randomBytes(16, (err, buf) => {
-        if (err) return reject(err);
-
-        const filename = file.originalname;
-        const fileinfo = {
-          filename,
-          bucketName: 'uploads'
-        };
-
-        resolve(fileinfo);
-      });
-    })
-});
-
-const upload = multer({ storage });
-
-app.post('/', upload.single('img'), (req, res) => {
-  res.send(req.files);
-});
-
-app.get('/:filename', (req, res) => {
-  gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
-    if (!file || file.length === 0)
-      return res.status(404).send('No file exists');
-
-    if (file.contentType === 'image/jpeg' || file.contentType === 'image/png') {
-      const readstream = gfs.createReadStream(file.filename);
-
-      readstream.pipe(res);
-    } else {
-      res.status(404).send('Not an image');
+app.post('/', (req, res) => {
+  const storage = multer.memoryStorage();
+  const upload = multer({
+    storage,
+    limits: { fields: 1, files: 1, parts: 2 }
+  });
+  upload.single('track')(req, res, err => {
+    if (err) {
+      console.log(err);
+      return res.status(400).send('Upload request validation failed');
     }
+
+    if (!req.body.name)
+      return res.status(400).send('No track name in request body');
+
+    const bucket = new mongoose.mongo.GridFSBucket(db, {
+      bucketName: 'tracks'
+    });
+    const readableTrackStream = new Readable();
+    readableTrackStream.push(req.file.buffer);
+    readableTrackStream.push(null);
+
+    const uploadStream = bucket.openUploadStream(req.body.name);
+    readableTrackStream.pipe(uploadStream);
+
+    uploadStream.on('error', () => {
+      res.status(500).json({ message: 'Error uploading file' });
+    });
+
+    uploadStream.on('finish', () => {
+      res.json({ message: 'File uploaded successfully ' + uploadStream.id });
+    });
   });
 });
 
