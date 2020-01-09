@@ -10,8 +10,9 @@
     "type": "git",
     "url": "git+https://github.com/sidsbrmnn/image-uploader-api.git"
   },
-  "author": "Siddharth Subramanian",
-  "license": "ISC",
+  "keywords": [],
+  "author": "Siddharth Subramanian <sidsbrmnn@gmail.com> (https://sidsbrmnn.github.io/)",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/sidsbrmnn/image-uploader-api/issues"
   },
