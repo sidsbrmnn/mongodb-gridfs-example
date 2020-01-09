@@ -3,53 +3,48 @@ const compression = require('compression');
 const cors = require('cors');
 const express = require('express');
 const helmet = require('helmet');
+const morgan = require('morgan');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const { Readable } = require('stream');
+const stream = require('stream');
 
 const app = express();
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(compression());
-  app.use(helmet());
-}
-app.use(cors({ origin: process.env.BASE_URL }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
 const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost/image-uploader-test';
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/image-uploader-test';
+const conn = mongoose.createConnection(MONGODB_URI, {
+  useCreateIndex: true,
+  useFindAndModify: false,
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
-let db;
-mongoose
-  .connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(res => {
-    db = res.connection.db;
-    console.log('Connected to MongoDB');
-  });
+app.use(morgan('dev'));
+app.use(helmet());
+app.use(cors({ origin: ['http://localhost:3000'], methods: ['GET', 'POST'] }));
+app.use(compression());
 
 app.get('/:id', (req, res) => {
-  let id;
-  try {
-    id = new mongoose.mongo.ObjectID(req.params.id);
-  } catch (ex) {
-    res.status(404).send('Not found');
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(404).send({ success: false, message: 'Media not found' });
   }
-  res.set('content-type', 'audio/mp3');
-  res.set('accept-ranges', 'bytes');
 
-  const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'tracks' });
-  const downloadStream = bucket.openDownloadStream(id);
+  const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+    bucketName: 'tracks'
+  });
+  const downloadStream = bucket.openDownloadStream(
+    mongoose.Types.ObjectId(req.params.id)
+  );
+
+  res.header('Content-Type', 'image/jpeg');
+  res.header('Accept-Ranges', 'bytes');
+
+  downloadStream.on('error', () => {
+    res.status(404).send({ success: false, message: 'Media not found' });
+  });
 
   downloadStream.on('data', chunk => {
     res.write(chunk);
-  });
-
-  downloadStream.on('error', () => {
-    res.sendStatus(404);
   });
 
   downloadStream.on('end', () => {
@@ -57,42 +52,35 @@ app.get('/:id', (req, res) => {
   });
 });
 
-app.post('/', (req, res) => {
-  const storage = multer.memoryStorage();
-  const upload = multer({
-    storage,
-    limits: { fields: 1, files: 1, parts: 2 }
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fields: 1, files: 1, parts: 2 }
+});
+app.post('/', upload.single('track'), (req, res) => {
+  const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+    bucketName: 'tracks'
   });
-  upload.single('track')(req, res, err => {
-    if (err) {
-      console.log(err);
-      return res.status(400).send('Upload request validation failed');
-    }
+  const readableStream = new stream.Readable();
+  const uploadStream = bucket.openUploadStream(req.body.name);
 
-    if (!req.body.name)
-      return res.status(400).send('No track name in request body');
+  readableStream.push(req.file.buffer);
+  readableStream.push(null);
+  readableStream.pipe(uploadStream);
 
-    const bucket = new mongoose.mongo.GridFSBucket(db, {
-      bucketName: 'tracks'
-    });
-    const readableTrackStream = new Readable();
-    readableTrackStream.push(req.file.buffer);
-    readableTrackStream.push(null);
+  uploadStream.on('error', err => {
+    throw err;
+  });
 
-    const uploadStream = bucket.openUploadStream(req.body.name);
-    readableTrackStream.pipe(uploadStream);
-
-    uploadStream.on('error', () => {
-      res.status(500).json({ message: 'Error uploading file' });
-    });
-
-    uploadStream.on('finish', () => {
-      res.json({ message: 'File uploaded successfully ' + uploadStream.id });
-    });
+  uploadStream.on('finish', () => {
+    res.send({ success: true, data: uploadStream.id });
   });
 });
 
-const PORT = parseInt(process.env.PORT, 10) || 3000;
-app.listen(PORT, () => {
-  console.log('Listening on port ' + PORT);
+app.use(function(err, req, res, next) {
+  res.status(500).send({ success: false, message: err.message });
+});
+
+const port = process.env.PORT || 3900;
+app.listen(port, () => {
+  console.log('Listening on port ' + port);
 });
