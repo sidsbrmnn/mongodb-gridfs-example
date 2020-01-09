@@ -9,8 +9,13 @@ const { Readable } = require('stream');
 
 const app = express();
 
+if (process.env.NODE_ENV === 'production') {
+  app.use(compression());
+  app.use(helmet());
+}
+app.use(cors({ origin: process.env.BASE_URL }));
 app.use(express.json());
-app.use(cors());
+app.use(express.urlencoded({ extended: false }));
 
 const MONGODB_URI =
   process.env.MONGODB_URI || 'mongodb://localhost/image-uploader-test';
@@ -87,7 +92,7 @@ app.post('/', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 app.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+  console.log('Listening on port ' + PORT);
 });
