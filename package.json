@@ -35,5 +35,16 @@
     "lint-staged": "^9.5.0",
     "nodemon": "^2.0.2",
     "prettier": "^1.19.1"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --config ./.prettierrc --ignore-path ./.prettierignore --write",
+      "eslint"
+    ]
   }
 }
