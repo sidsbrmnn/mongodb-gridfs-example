@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const compression = require('compression');
 const cors = require('cors');
 const express = require('express');
@@ -21,7 +22,7 @@ app.get('/:id', (req, res) => {
   }
 
   const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-    bucketName: 'tracks'
+    bucketName: 'images'
   });
   const downloadStream = bucket.openDownloadStream(
     mongoose.Types.ObjectId(req.params.id)
@@ -47,9 +48,9 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fields: 1, files: 1, parts: 2 }
 });
-app.post('/', upload.single('track'), (req, res, next) => {
+app.post('/', upload.single('image'), (req, res, next) => {
   const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-    bucketName: 'tracks'
+    bucketName: 'images'
   });
   const readableStream = new stream.Readable();
   const uploadStream = bucket.openUploadStream(req.file.originalname);
