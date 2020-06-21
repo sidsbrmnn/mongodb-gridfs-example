@@ -10,15 +10,6 @@ const stream = require('stream');
 
 const app = express();
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/image-uploader-test';
-const conn = mongoose.createConnection(MONGODB_URI, {
-  useCreateIndex: true,
-  useFindAndModify: false,
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
 app.use(morgan('dev'));
 app.use(helmet());
 app.use(cors({ origin: ['http://localhost:3000'], methods: ['GET', 'POST'] }));
@@ -81,7 +72,17 @@ app.use(function(err, req, res, next) {
   res.status(500).send({ success: false, message: err.message });
 });
 
-const port = process.env.PORT || 3900;
-app.listen(port, () => {
-  console.log('Listening on port ' + port);
-});
+(async () => {
+  const MONGODB_URI =
+    process.env.MONGODB_URI || 'mongodb://localhost:27017/image-uploader-test';
+  await mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  });
+  console.log('Connected to MongoDB');
+
+  const PORT = parseInt(process.env.PORT, 10) || 3900;
+  app.listen(PORT, () => {
+    console.log('Listening on port: ' + PORT);
+  });
+})();
