@@ -53,7 +53,9 @@ app.post('/', upload.single('image'), (req, res, next) => {
     bucketName: 'images'
   });
   const readable = new Readable();
-  const uploadStream = bucket.openUploadStream(req.file.originalname);
+  const uploadStream = bucket.openUploadStream(req.file.originalname, {
+    metadata: { mimetype: req.file.mimetype }
+  });
 
   readable.push(req.file.buffer);
   readable.push(null);
