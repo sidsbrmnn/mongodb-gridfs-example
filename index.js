@@ -16,32 +16,31 @@ app.use(helmet());
 app.use(cors({ origin: ['http://localhost:3000'], methods: ['GET', 'POST'] }));
 app.use(compression());
 
-app.get('/:id', (req, res) => {
+app.get('/:id', async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     res.status(404).send({ success: false, message: 'Media not found' });
+    return;
   }
 
   const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'images'
   });
-  const downloadStream = bucket.openDownloadStream(
-    mongoose.Types.ObjectId(req.params.id)
-  );
+  const cursor = bucket.find({ _id: mongoose.Types.ObjectId(req.params.id) });
+  try {
+    const files = await cursor.toArray();
+    if (!files.length) {
+      res.status(404).send({ success: false, message: 'Media not found' });
+      return;
+    }
 
-  res.header('Content-Type', 'image/jpeg');
-  res.header('Accept-Ranges', 'bytes');
+    res.header('Content-Type', files[0].metadata.mimetype);
+    res.header('Accept-Ranges', 'bytes');
 
-  downloadStream.on('error', () => {
-    res.status(404).send({ success: false, message: 'Media not found' });
-  });
-
-  downloadStream.on('data', chunk => {
-    res.write(chunk);
-  });
-
-  downloadStream.on('end', () => {
-    res.end();
-  });
+    const downloadStream = bucket.openDownloadStream(files[0]._id);
+    downloadStream.pipe(res);
+  } catch (err) {
+    next(err);
+  }
 });
 
 const upload = multer({
