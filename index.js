@@ -52,7 +52,7 @@ app.post('/', upload.single('track'), (req, res, next) => {
     bucketName: 'tracks'
   });
   const readableStream = new stream.Readable();
-  const uploadStream = bucket.openUploadStream(req.body.name);
+  const uploadStream = bucket.openUploadStream(req.file.originalname);
 
   readableStream.push(req.file.buffer);
   readableStream.push(null);
