@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const stream = require('stream');
+const { Readable } = require('stream');
 
 const app = express();
 
@@ -52,12 +52,12 @@ app.post('/', upload.single('image'), (req, res, next) => {
   const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'images'
   });
-  const readableStream = new stream.Readable();
+  const readable = new Readable();
   const uploadStream = bucket.openUploadStream(req.file.originalname);
 
-  readableStream.push(req.file.buffer);
-  readableStream.push(null);
-  readableStream.pipe(uploadStream);
+  readable.push(req.file.buffer);
+  readable.push(null);
+  readable.pipe(uploadStream);
 
   uploadStream.on('error', err => {
     next(err);
