@@ -47,7 +47,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fields: 1, files: 1, parts: 2 }
 });
-app.post('/', upload.single('track'), (req, res) => {
+app.post('/', upload.single('track'), (req, res, next) => {
   const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'tracks'
   });
@@ -59,7 +59,8 @@ app.post('/', upload.single('track'), (req, res) => {
   readableStream.pipe(uploadStream);
 
   uploadStream.on('error', err => {
-    throw err;
+    next(err);
+    return;
   });
 
   uploadStream.on('finish', () => {
