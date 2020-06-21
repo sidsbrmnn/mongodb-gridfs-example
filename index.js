@@ -76,6 +76,7 @@ app.post('/', upload.single('track'), (req, res) => {
   });
 });
 
+// eslint-disable-next-line no-unused-vars
 app.use(function(err, req, res, next) {
   res.status(500).send({ success: false, message: err.message });
 });
