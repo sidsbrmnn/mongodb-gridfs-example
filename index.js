@@ -20,7 +20,7 @@ app.get('/:id', (req, res) => {
     res.status(404).send({ success: false, message: 'Media not found' });
   }
 
-  const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+  const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'tracks'
   });
   const downloadStream = bucket.openDownloadStream(
@@ -48,7 +48,7 @@ const upload = multer({
   limits: { fields: 1, files: 1, parts: 2 }
 });
 app.post('/', upload.single('track'), (req, res) => {
-  const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+  const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'tracks'
   });
   const readableStream = new stream.Readable();
